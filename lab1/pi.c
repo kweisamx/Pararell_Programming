@@ -1,17 +1,24 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<pthread.h>
+#include<time.h>
 #define MAX_NUMBER 10000000
 
 int global_sum= 0;
 pthread_mutex_t mutex;
 
+typedef struct thread_info{
+    int pid;
+    int step;
+    int start;
 
-int calculate_pi(int n){
+}th_info;
+int calculate_pi(int n,int start){
     int sum = 0;
-    for(int i = 0; i < n;i++){
-        double x = (double)rand()/RAND_MAX;   
-        double y = (double)rand()/RAND_MAX;
+    double x,y;
+    for(int i = start; i < n + start ;i++){
+        x = (double)rand()/RAND_MAX;   
+        y = (double)rand()/RAND_MAX;
         if ( x*x + y*y <= 1)
             sum+=1;
     }
@@ -20,9 +27,15 @@ int calculate_pi(int n){
 
 
 void *thread_func(void *param){
-    int step = *(int *)param;
-    //printf("%d\n",step); //debug
-    int s = calculate_pi(step);
+    th_info t = *(th_info *)param;
+    time_t startwtime, endwtime;
+
+    startwtime = time (NULL); 
+    printf("i'm thread %d, %d ,%d\n",t.pid,t.step,t.start); //debug
+    int s = calculate_pi(t.step,t.start);
+    endwtime = time (NULL);
+    
+    printf ("wall clock time = %d\n", (endwtime - startwtime));
 
     pthread_mutex_lock(&mutex); // lock
     global_sum += s;
@@ -37,17 +50,27 @@ int main(int argc, char **argv){
         printf("Please enter correct argument, ex, ./pi 4 10000");
         return 1;
     }
-    int CPUNum =atoi(argv[1]);
+    int CPUNum = atoi(argv[1]);
     int run_step = atoi(argv[2]);
-    int t_num = 4;
-    pthread_t th[t_num];
+    int t_num = 0;
     
-    for(int i = 0; i < 4; i++){
-        if(pthread_create(&th[i], NULL, thread_func, (void *)&run_step) != 0){
+    t_num = CPUNum;
+    run_step = run_step / CPUNum;
+
+    pthread_t th[t_num];
+    th_info t_info[t_num];
+
+    
+    for(int i = 0; i < t_num; i++){
+        t_info[i].pid = i;
+        t_info[i].step = run_step;
+        t_info[i].start = i * run_step ;
+
+        if(pthread_create(&th[i], NULL, thread_func, (void *)&t_info[i]) != 0){
             perror("create thread failed");
         }
     }
-    for(int j = 0; j < 4; j ++){
+    for(int j = 0; j < t_num; j ++){
         pthread_join(th[j], NULL);
     }
 

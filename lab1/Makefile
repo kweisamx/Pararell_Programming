@@ -3,4 +3,4 @@ gcc:
 clean:
 		rm pi
 run:
-		./pi 4 1000000
+		./pi 4 10000000
