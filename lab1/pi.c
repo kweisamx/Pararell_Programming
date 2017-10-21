@@ -2,7 +2,6 @@
 #include<stdlib.h>
 #include<pthread.h>
 #include<time.h>
-#define MAX_NUMBER 10000000
 
 int global_sum= 0;
 pthread_mutex_t mutex;
@@ -13,6 +12,7 @@ typedef struct thread_info{
     int start;
 
 }th_info;
+
 int calculate_pi(int n,int start){
     int sum = 0;
     double x,y;
@@ -29,6 +29,7 @@ int calculate_pi(int n,int start){
 void *thread_func(void *param){
     th_info t = *(th_info *)param;
     time_t startwtime, endwtime;
+    
 
     startwtime = time (NULL); 
     printf("i'm thread %d, %d ,%d\n",t.pid,t.step,t.start); //debug
@@ -40,6 +41,8 @@ void *thread_func(void *param){
     pthread_mutex_lock(&mutex); // lock
     global_sum += s;
     pthread_mutex_unlock(&mutex); //Unlock
+
+    pthread_exit(NULL);
 }
 
 
@@ -76,6 +79,7 @@ int main(int argc, char **argv){
 
     double pi = 4.0 * global_sum / (run_step * t_num) ;
 
-    printf("%lf\n",pi);
+    printf("global_sum : %d\n",global_sum);
+    printf("pi rate : %lf\n",pi);
     return 0;
 }
