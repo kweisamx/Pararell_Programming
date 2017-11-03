@@ -2,4 +2,4 @@
 *.tgz
 a.out
 CG/bin/
-
+*.__*
