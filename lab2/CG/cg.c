@@ -685,8 +685,7 @@ static void sprnvc(int n, int nz, int nn1, double v[], int iv[])
   double vecelt, vecloc;
 
   nzv = 0;
-
-  while (nzv < nz) {
+  for(nzv = 0; nzv < nz; ) {
     vecelt = randlc(&tran, amult);
 
     //---------------------------------------------------------------------
