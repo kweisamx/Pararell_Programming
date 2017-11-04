@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <omp.h>
 
 #include "globals.h"
 #include "randdp.h"
@@ -484,15 +485,16 @@ static void makea(int n,
   // Generate nonzero positions and save for the use in sparse.
   //---------------------------------------------------------------------
   for (iouter = 0; iouter < n; iouter++) {
-    nzv = NONZER;
-    sprnvc(n, nzv, nn1, vc, ivc);
-    vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
-    arow[iouter] = nzv;
-    
-    for (ivelt = 0; ivelt < nzv; ivelt++) {
-      acol[iouter][ivelt] = ivc[ivelt] - 1;
-      aelt[iouter][ivelt] = vc[ivelt];
-    }
+        nzv = NONZER;
+        
+        sprnvc(n, nzv, nn1, vc, ivc);
+        vecset(n, vc, ivc, &nzv, iouter+1, 0.5);
+        arow[iouter] = nzv;
+        #pragma omp parallel for
+        for (ivelt = 0; ivelt < nzv; ivelt++) {
+          acol[iouter][ivelt] = ivc[ivelt] - 1;
+          aelt[iouter][ivelt] = vc[ivelt];
+        }
   }
 
   //---------------------------------------------------------------------
@@ -542,17 +544,16 @@ static void sparse(double a[],
   //---------------------------------------------------------------------
   // ...count the number of triples in each row
   //---------------------------------------------------------------------
+  #pragma omp parallel for
   for (j = 0; j < nrows+1; j++) {
     rowstr[j] = 0;
   }
-
-  for (i = 0; i < n; i++) {
-    for (nza = 0; nza < arow[i]; nza++) {
-      j = acol[i][nza] + 1;
-      rowstr[j] = rowstr[j] + arow[i];
-    }
-  }
-
+      for (i = 0; i < n; i++) {
+        for (nza = 0; nza < arow[i]; nza++) {
+          j = acol[i][nza] + 1;
+          rowstr[j] = rowstr[j] + arow[i];
+        }
+      }
   rowstr[0] = 0;
   for (j = 1; j < nrows+1; j++) {
     rowstr[j] = rowstr[j] + rowstr[j-1];
@@ -730,18 +731,23 @@ static void vecset(int n, double v[], int iv[], int *nzv, int i, double val)
 {
   int k;
   logical set;
-
+  omp_lock_t lock;
+  omp_init_lock(&lock);
   set = false;
-  for (k = 0; k < *nzv; k++) {
-    if (iv[k] == i) {
-      v[k] = val;
-      set  = true;
-    }
+  #pragma omp parallel
+  { 
+      #pragma omp for
+      for (k = 0; k < *nzv; k++) {
+        if (iv[k] == i) {
+          v[k] = val;
+          set  = true;
+        }
+      }
   }
-  if (set == false) {
-    v[*nzv]  = val;
-    iv[*nzv] = i;
-    *nzv     = *nzv + 1;
-  }
+      if (set == false) {
+        v[*nzv]  = val;
+        iv[*nzv] = i;
+        *nzv = *nzv + 1;
+      }
 }
 

@@ -13,12 +13,12 @@ void Test( int n ){
 int tid;
 
 int main(int argc, char *argv[]){
-    #pragma omp parallel private(tid)
-    for(int i = 0; i < 10; i++){
-    tid = omp_get_thread_num();
-    printf("i'm tid :%d,i enter\n",tid);
-        
-        Test(i);
-    printf("i'm tid :%d,i finish\n",tid);
+    #pragma omp parallel 
+    {
+        #pragma omp for
+        for(int i = 0; i < 10; i++){
+        tid = omp_get_thread_num();
+        printf("I'am thread %d \n",tid);
+        }
     }
 }
