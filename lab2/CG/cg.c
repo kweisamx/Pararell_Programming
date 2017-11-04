@@ -550,6 +550,8 @@ static void sparse(double a[],
   }
       for (i = 0; i < n; i++) {
         for (nza = 0; nza < arow[i]; nza++) {
+          int tid = omp_get_thread_num();
+          printf("%d\n",tid);
           j = acol[i][nza] + 1;
           rowstr[j] = rowstr[j] + arow[i];
         }
