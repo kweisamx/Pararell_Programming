@@ -154,9 +154,11 @@ int main(int argc, char *argv[])
   //---------------------------------------------------------------------
   // set starting vector to (1, 1, .... 1)
   //---------------------------------------------------------------------
+  #pragma omp for
   for (i = 0; i < NA+1; i++) {
     x[i] = 1.0;
   }
+  #pragma omp for
   for (j = 0; j < lastcol - firstcol + 1; j++) {
     q[j] = 0.0;
     z[j] = 0.0;
@@ -310,6 +312,7 @@ static void conj_grad(int colidx[],
   //---------------------------------------------------------------------
   // Initialize the CG algorithm:
   //---------------------------------------------------------------------
+  #pragma omp for
   for (j = 0; j < naa+1; j++) {
     q[j] = 0.0;
     z[j] = 0.0;
@@ -321,10 +324,13 @@ static void conj_grad(int colidx[],
   // rho = r.r
   // Now, obtain the norm of r: First, sum squares of r elements locally...
   //---------------------------------------------------------------------
-  for (j = 0; j < lastcol - firstcol + 1; j++) {
-    rho = rho + r[j]*r[j];
+  #pragma omp parallel
+  {
+      #pragma omp for reduction(+:rho)
+      for (j = 0; j < lastcol - firstcol + 1; j++) {
+        rho +=r[j]*r[j];
+      }
   }
-
   //---------------------------------------------------------------------
   //---->
   // The conj grad iteration loop
@@ -342,7 +348,7 @@ static void conj_grad(int colidx[],
     //       unrolled-by-two version is some 10% faster.  
     //       The unrolled-by-8 version below is significantly faster
     //       on the Cray t3d - overall speed of code is 1.5 times faster.
-
+    #pragma omp parallel for private(k)
     for (j = 0; j < lastrow - firstrow + 1; j++) {
       sum = 0.0;
       for (k = rowstr[j]; k < rowstr[j+1]; k++) {
@@ -592,7 +598,6 @@ static void sparse(double a[],
   //---------------------------------------------------------------------
   size = 1.0;
   ratio = pow(rcond, (1.0 / (double)(n)));
-
 
   for (i = 0; i < n; i++) {
     for (nza = 0; nza < arow[i]; nza++) {
