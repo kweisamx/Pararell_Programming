@@ -526,6 +526,8 @@ static void sparse(double a[],
                    double rcond,
                    double shift)
 {
+   
+  int tid = omp_get_thread_num();
   int nrows;
 
   //---------------------------------------------------
@@ -548,14 +550,15 @@ static void sparse(double a[],
   for (j = 0; j < nrows+1; j++) {
     rowstr[j] = 0;
   }
-      for (i = 0; i < n; i++) {
-        for (nza = 0; nza < arow[i]; nza++) {
-          int tid = omp_get_thread_num();
-          printf("%d\n",tid);
-          j = acol[i][nza] + 1;
-          rowstr[j] = rowstr[j] + arow[i];
-        }
-      }
+
+  #pragma omp parallel for private(j,nza) collapse(2)
+  for (i = 0; i < n; i++) {
+    for (nza = 0; nza < arow[i]; nza++) {
+      j = acol[i][nza] + 1;
+      #pragma omp critical
+      rowstr[j] = rowstr[j] + arow[i];
+    }
+  }
   rowstr[0] = 0;
   for (j = 1; j < nrows+1; j++) {
     rowstr[j] = rowstr[j] + rowstr[j-1];
@@ -575,6 +578,7 @@ static void sparse(double a[],
   //---------------------------------------------------------------------
   // ... preload data pages
   //---------------------------------------------------------------------
+  #pragma omp parallel for private(k)
   for (j = 0; j < nrows; j++) {
     for (k = rowstr[j]; k < rowstr[j+1]; k++) {
       a[k] = 0.0;
@@ -588,6 +592,7 @@ static void sparse(double a[],
   //---------------------------------------------------------------------
   size = 1.0;
   ratio = pow(rcond, (1.0 / (double)(n)));
+
 
   for (i = 0; i < n; i++) {
     for (nza = 0; nza < arow[i]; nza++) {
@@ -652,6 +657,7 @@ static void sparse(double a[],
     nzloc[j] = nzloc[j] + nzloc[j-1];
   }
 
+
   for (j = 0; j < nrows; j++) {
     if (j > 0) {
       j1 = rowstr[j] - nzloc[j-1];
@@ -666,6 +672,8 @@ static void sparse(double a[],
       nza = nza + 1;
     }
   }
+
+
   for (j = 1; j < nrows+1; j++) {
     rowstr[j] = rowstr[j] - nzloc[j-1];
   }
