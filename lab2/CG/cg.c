@@ -361,8 +361,9 @@ static void conj_grad(int colidx[],
     // Obtain p.q
     //---------------------------------------------------------------------
     d = 0.0;
+    #pragma omp parallel for reduction(+:d)
     for (j = 0; j < lastcol - firstcol + 1; j++) {
-      d = d + p[j]*q[j];
+      d +=p[j]*q[j];
     }
 
     //---------------------------------------------------------------------
