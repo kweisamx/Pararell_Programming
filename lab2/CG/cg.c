@@ -568,11 +568,9 @@ static void sparse(double a[],
     rowstr[j] = 0;
   }
 
-  #pragma omp parallel for private(j,nza) collapse(2)
   for (i = 0; i < n; i++) {
     for (nza = 0; nza < arow[i]; nza++) {
       j = acol[i][nza] + 1;
-      #pragma omp critical
       rowstr[j] = rowstr[j] + arow[i];
     }
   }
