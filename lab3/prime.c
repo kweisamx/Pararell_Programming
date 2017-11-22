@@ -4,9 +4,9 @@
 #include "mpi.h"
 
 int isprime(int n) {
-  int i,squareroot;
+  long long int i,squareroot;
   if (n>10) {
-    squareroot = (int) sqrt(n);
+    squareroot = (long long int) sqrt(n);
     for (i=3; i<=squareroot; i=i+2)
       if ((n%i)==0)
         return 0;
