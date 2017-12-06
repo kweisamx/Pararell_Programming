@@ -60,7 +60,7 @@ void check_param(void)
 }
 
 
-__global__ void gpu_init_old_val(float *a, float *b, int n){
+__global__ void gpu_init_old_val(float *a, float *b, float *c, int n){
         int j=blockIdx.x*blockDim.x+threadIdx.x;
         int m=gridDim.x*blockDim.x;
         for(int k=j; k<n; k+=m){
@@ -69,21 +69,22 @@ __global__ void gpu_init_old_val(float *a, float *b, int n){
         __syncthreads();
 }
 __global__ void gpu_update(float *a, float *b, float *c, int n){
-        for(int k=0; k<n; k++){
+        int j=blockIdx.x*blockDim.x+threadIdx.x;
+        int m=gridDim.x*blockDim.x;
+        for(int k=j; k<n; k+=m){
             a[k] = b[k];
             b[k] = c[k];
         }
         __syncthreads();
         
 }
-__global__ void gpu_update(float *a, float *b, float *c, int n){
+__global__ void gpu_update_point(float *a, float *b, float *c, int n){
         for(int k=0; k<n; k++){
             a[k] = b[k];
             b[k] = c[k];
         }
         __syncthreads();
 }
-__global__ void gpu_update_point(float *a,float *b,float *c)
 
 /**********************************************************************
  *      Calculate new values using wave equation
@@ -121,27 +122,25 @@ void init_line(void)
    } 
    cudaMemcpy(gvalue, values, size, cudaMemcpyHostToDevice);
    cudaMemcpy(goldval, oldval, size, cudaMemcpyHostToDevice);
+   cudaMemcpy(gnewval, newval, size, cudaMemcpyHostToDevice);
    
    /* Initialize old values array */
-   gpu_init_old_val<<<30,512>>>(goldval, gvalue, tpoints);
+   gpu_init_old_val<<<30,512>>>(goldval, gvalue, gnewval, tpoints);
 
    cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
    cudaMemcpy(oldval, goldval, size, cudaMemcpyDeviceToHost);
 
    printf("Updating all points for all time steps...\n");
    
-   cudaMemcpy(gnewval, newval, size, cudaMemcpyHostToDevice);
    /* Update values for each time step */
    for (i = 1; i<= nsteps; i++) {
       /* Update points along line for this time step */
-      /*
       for (j = 1; j <= tpoints; j++) {
          if ((j == 1) || (j  == tpoints))
             newval[j] = 0.0;
          else
             do_math(j);
       }
-      */
 
       /* Update old values with new values */
       
