@@ -68,18 +68,19 @@ __global__ void gpu_init_old_val(float *a, float *b, float *c, int n){
         }
         __syncthreads();
 }
-__global__ void gpu_update(float *a, float *b, float *c, int n){
+__global__ void gpu_update_point(float *a, float *b, float *c, int n){
         int j=blockIdx.x*blockDim.x+threadIdx.x;
         int m=gridDim.x*blockDim.x;
         for(int k=j; k<n; k+=m){
-            a[k] = b[k];
-            b[k] = c[k];
+            if ((k == 1) || (k  == n)){
+                c[k] = 0.0;
+                }
+            else{
+                c[k] = (2.0 * b[k]) - a[k] + (0.09 * (-2.0)*b[k]);
+                }
         }
         __syncthreads();
-        
-}
-__global__ void gpu_update_point(float *a, float *b, float *c, int n){
-        for(int k=0; k<n; k++){
+        for(int k=j; k<n; k+=m){
             a[k] = b[k];
             b[k] = c[k];
         }
@@ -127,32 +128,17 @@ void init_line(void)
    /* Initialize old values array */
    gpu_init_old_val<<<30,512>>>(goldval, gvalue, gnewval, tpoints);
 
-   cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
-   cudaMemcpy(oldval, goldval, size, cudaMemcpyDeviceToHost);
 
    printf("Updating all points for all time steps...\n");
    
    /* Update values for each time step */
    for (i = 1; i<= nsteps; i++) {
       /* Update points along line for this time step */
-      for (j = 1; j <= tpoints; j++) {
-         if ((j == 1) || (j  == tpoints))
-            newval[j] = 0.0;
-         else
-            do_math(j);
-      }
+      gpu_update_point<<<30,512>>>(goldval, gvalue, gnewval, tpoints);
 
-      /* Update old values with new values */
-      
-      for (j = 1; j <= tpoints; j++) {
-         oldval[j] = values[j];
-         values[j] = newval[j];
-      }
-
-      //gpu_update<<<1,1>>>(goldval, gvalue, newval, tpoints);
-      //cudaMemcpy(newval, gnewval, size, cudaMemcpyDeviceToHost);
-      //cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
    }
+   cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
+   printf("Hi");
 
 }
 
