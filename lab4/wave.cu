@@ -61,10 +61,45 @@ void check_param(void)
 
 
 __global__ void gpu_init_old_val(float *a, float *b, int n){
-    for(int k=1; k<=n ;k++){
-        a[k] = b[k];
-    }
+        int j=blockIdx.x*blockDim.x+threadIdx.x;
+        int m=gridDim.x*blockDim.x;
+        for(int k=j; k<n; k+=m){
+            a[k] = b[k];
+        }
+        __syncthreads();
 }
+__global__ void gpu_update(float *a, float *b, float *c, int n){
+        for(int k=0; k<n; k++){
+            a[k] = b[k];
+            b[k] = c[k];
+        }
+        __syncthreads();
+        
+}
+__global__ void gpu_update(float *a, float *b, float *c, int n){
+        for(int k=0; k<n; k++){
+            a[k] = b[k];
+            b[k] = c[k];
+        }
+        __syncthreads();
+}
+__global__ void gpu_update_point(float *a,float *b,float *c)
+
+/**********************************************************************
+ *      Calculate new values using wave equation
+ *********************************************************************/
+void do_math(int i)
+{
+   float dtime, c, dx, tau, sqtau;
+
+   dtime = 0.3;
+   c = 1.0;
+   dx = 1.0;
+   tau = (c * dtime / dx);
+   sqtau = tau * tau;
+   newval[i] = (2.0 * values[i]) - oldval[i] + (sqtau *  (-2.0)*values[i]);
+}
+
 
 
 /**********************************************************************
@@ -88,57 +123,43 @@ void init_line(void)
    cudaMemcpy(goldval, oldval, size, cudaMemcpyHostToDevice);
    
    /* Initialize old values array */
-   /*
-   for (i = 1; i <= tpoints; i++) 
-      oldval[i] = values[i];
-   */
-   gpu_init_old_val<<<1,1>>>(goldval, gvalue, tpoints);
+   gpu_init_old_val<<<30,512>>>(goldval, gvalue, tpoints);
 
    cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
    cudaMemcpy(oldval, goldval, size, cudaMemcpyDeviceToHost);
 
-}
-
-/**********************************************************************
- *      Calculate new values using wave equation
- *********************************************************************/
-void do_math(int i)
-{
-   float dtime, c, dx, tau, sqtau;
-
-   dtime = 0.3;
-   c = 1.0;
-   dx = 1.0;
-   tau = (c * dtime / dx);
-   sqtau = tau * tau;
-   newval[i] = (2.0 * values[i]) - oldval[i] + (sqtau *  (-2.0)*values[i]);
-}
-
-/**********************************************************************
- *     Update all values along line a specified number of times
- *********************************************************************/
-void update()
-{
-   int i, j;
-
+   printf("Updating all points for all time steps...\n");
+   
+   cudaMemcpy(gnewval, newval, size, cudaMemcpyHostToDevice);
    /* Update values for each time step */
    for (i = 1; i<= nsteps; i++) {
       /* Update points along line for this time step */
+      /*
       for (j = 1; j <= tpoints; j++) {
-         /* global endpoints */
          if ((j == 1) || (j  == tpoints))
             newval[j] = 0.0;
          else
             do_math(j);
       }
+      */
 
       /* Update old values with new values */
+      
       for (j = 1; j <= tpoints; j++) {
          oldval[j] = values[j];
          values[j] = newval[j];
       }
+
+      //gpu_update<<<1,1>>>(goldval, gvalue, newval, tpoints);
+      //cudaMemcpy(newval, gnewval, size, cudaMemcpyDeviceToHost);
+      //cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
    }
+
 }
+
+/**********************************************************************
+ *     Update all values along line a specified number of times
+ *********************************************************************/
 
 /**********************************************************************
  *     Print final results
@@ -171,8 +192,6 @@ int main(int argc, char *argv[])
 
 	printf("Initializing points on the line...\n");
 	init_line();
-	printf("Updating all points for all time steps...\n");
-	update();
 	printf("Printing final results...\n");
 	printfinal();
 	printf("\nDone.\n\n");
