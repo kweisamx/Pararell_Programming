@@ -68,23 +68,19 @@ __global__ void gpu_init_old_val(float *a, float *b, float *c, int n){
         }
         __syncthreads();
 }
-__global__ void gpu_update_point(float *a, float *b, float *c, int n){
+__global__ void gpu_update_point(float *a, float *b, float *c, int point, int nsteps){
         int j=blockIdx.x*blockDim.x+threadIdx.x;
         int m=gridDim.x*blockDim.x;
-        for(int k=j; k<n; k+=m){
-            if ((k == 1) || (k  == n)){
+        for(int k=j; k<point; k+=m){
+            if ((k == 0) || (k  == point - 1))
                 c[k] = 0.0;
-                }
-            else{
+            else
                 c[k] = (2.0 * b[k]) - a[k] + (0.09 * (-2.0)*b[k]);
-                }
+                
+                a[k] = b[k];
+                b[k] = c[k];
+                __syncthreads();
         }
-        __syncthreads();
-        for(int k=j; k<n; k+=m){
-            a[k] = b[k];
-            b[k] = c[k];
-        }
-        __syncthreads();
 }
 
 /**********************************************************************
@@ -116,11 +112,11 @@ void init_line(void)
    fac = 2.0 * PI;
    k = 0.0; 
    tmp = tpoints - 1;
-   for (j = 1; j <= tpoints; j++) {
+   for (j = 0; j < tpoints; j++) {
       x = k/tmp;
       values[j] = sin (fac * x);
       k = k + 1.0;
-   } 
+   }
    cudaMemcpy(gvalue, values, size, cudaMemcpyHostToDevice);
    cudaMemcpy(goldval, oldval, size, cudaMemcpyHostToDevice);
    cudaMemcpy(gnewval, newval, size, cudaMemcpyHostToDevice);
@@ -132,13 +128,11 @@ void init_line(void)
    printf("Updating all points for all time steps...\n");
    
    /* Update values for each time step */
-   for (i = 1; i<= nsteps; i++) {
+   for (i = 0; i< nsteps; i++) {
       /* Update points along line for this time step */
-      gpu_update_point<<<30,512>>>(goldval, gvalue, gnewval, tpoints);
-
+      gpu_update_point<<<30,512>>>(goldval, gvalue, gnewval, tpoints, nsteps);
    }
    cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
-   printf("Hi");
 
 }
 
@@ -153,9 +147,9 @@ void printfinal()
 {
    int i;
 
-   for (i = 1; i <= tpoints; i++) {
+   for (i = 0; i < tpoints; i++) {
       printf("%6.4f ", values[i]);
-      if (i%10 == 0)
+      if (i%10 == 9)
          printf("\n");
    }
 }
