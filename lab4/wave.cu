@@ -69,18 +69,23 @@ __global__ void gpu_init_old_val(float *a, float *b, float *c, int n){
         __syncthreads();
 }
 __global__ void gpu_update_point(float *a, float *b, float *c, int point, int nsteps){
-        int j=blockIdx.x*blockDim.x+threadIdx.x;
-        int m=gridDim.x*blockDim.x;
-        for(int k=j; k<point; k+=m){
-            if ((k == 0) || (k  == point - 1))
-                c[k] = 0.0;
-            else
-                c[k] = (2.0 * b[k]) - a[k] + (0.09 * (-2.0)*b[k]);
-                
-                a[k] = b[k];
-                b[k] = c[k];
-                __syncthreads();
-        }
+                int p=blockIdx.x*blockDim.x+threadIdx.x;
+                float aval = a[p];
+                float bval = b[p];
+                float cval;
+                if (p < point) {
+                for (int k = 0;k<nsteps;k++){
+                    if ((p== 0) || (p  == point - 1))
+                        cval = 0.0;
+                    else
+                        cval = (2.0 * bval) - aval + (0.09 * (-2.0)*bval);
+                        
+                        aval = bval;
+                        bval = cval;
+                        __syncthreads();
+                    }
+                }
+                b[p] = bval;
 }
 
 /**********************************************************************
@@ -105,7 +110,7 @@ void do_math(int i)
  *********************************************************************/
 void init_line(void)
 {
-   int i, j;
+   int  j;
    float x, fac, k, tmp;
 
    /* Calculate initial values based on sine curve */
@@ -128,10 +133,8 @@ void init_line(void)
    printf("Updating all points for all time steps...\n");
    
    /* Update values for each time step */
-   for (i = 0; i< nsteps; i++) {
       /* Update points along line for this time step */
-      gpu_update_point<<<30,512>>>(goldval, gvalue, gnewval, tpoints, nsteps);
-   }
+   gpu_update_point<<<(tpoints/512 + 1),512>>>(goldval, gvalue, gnewval, tpoints, nsteps);
    cudaMemcpy(values, gvalue, size, cudaMemcpyDeviceToHost);
 
 }
