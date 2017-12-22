@@ -132,10 +132,10 @@ int main(int argc, char const *argv[])
 	}
     std::cout<<"Build Program is OK!"<<std::endl;
 
-    /* load clean */
+    /* load program */
     
-    cl_kernel clean = clCreateKernel(program, "clean", &err);
-    if(clean == 0 && err != 0){
+    cl_kernel pro = clCreateKernel(program, "pro", &err);
+    if(pro == 0 && err != 0){
         std::cerr << "can't load kernel, err is "<< err << std::endl;
         clReleaseMemObject(cl_img);
         clReleaseMemObject(cl_size);
@@ -148,7 +148,7 @@ int main(int argc, char const *argv[])
 
 
     /* run the kernel */
-    err = clSetKernelArg(clean, 0, sizeof(cl_mem), &cl_img);
+    err = clSetKernelArg(pro, 0, sizeof(cl_mem), &cl_img);
     if( err != 0){
         std::cerr << "can't set kernel, err is "<< err << std::endl;
         clReleaseMemObject(cl_img);
@@ -160,7 +160,7 @@ int main(int argc, char const *argv[])
     }
     std::cout<<"Set Kernel is OK!"<<std::endl;
 
-    err = clSetKernelArg(clean, 1, sizeof(cl_mem), &cl_res);
+    err = clSetKernelArg(pro, 1, sizeof(cl_mem), &cl_res);
     if( err != 0){
         std::cerr << "can't set kernel, err is "<< err << std::endl;
         clReleaseMemObject(cl_img);
@@ -172,7 +172,7 @@ int main(int argc, char const *argv[])
     }
     std::cout<<"Set Kernel is OK!"<<std::endl;
 
-    err = clSetKernelArg(clean, 2, sizeof(cl_mem), &cl_size);
+    err = clSetKernelArg(pro, 2, sizeof(cl_mem), &cl_size);
     if( err != 0){
         std::cerr << "can't set kernel, err is "<< err << std::endl;
         clReleaseMemObject(cl_img);
@@ -185,12 +185,14 @@ int main(int argc, char const *argv[])
     std::cout<<"Set Kernel is OK!"<<std::endl;
 
     size_t work_size = 1;
-    err = clEnqueueNDRangeKernel(queue, clean, 1, 0, &work_size, 0, 0, 0, 0);
+    err = clEnqueueNDRangeKernel(queue, pro, 1, 0, &work_size, 0, 0, 0, 0);
     err = clEnqueueReadBuffer(queue, cl_res, CL_TRUE, 0, 768 * sizeof(unsigned int), result, 0, 0, 0);
     if(err != CL_SUCCESS){
         printf("enqueue fail");
         return 0;
     }
+
+    /* Clean All OpenCL memory*/
     clFlush(queue);
     clFinish(queue);
     clReleaseProgram(program);

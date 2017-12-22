@@ -1,4 +1,4 @@
-__kernel void clean(__global const unsigned int *img, __global unsigned int *result, __global const unsigned int *size){
+__kernel void pro(__global const unsigned int *img, __global unsigned int *result, __global const unsigned int *size){
     unsigned int idx;
 
 	for (idx = 0; idx < 768; ++idx)
