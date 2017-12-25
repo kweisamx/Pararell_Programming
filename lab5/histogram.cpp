@@ -5,7 +5,7 @@
 
 const char *histogram = "\
 __kernel void histogram(\
-	__global unsigned char *img,\
+	__global unsigned int *img,\
 	unsigned int count,\
 	__global unsigned int *result)\
 {\
@@ -21,14 +21,14 @@ __kernel void histogram(\
     if(256 <= idx && idx < 512){\
         for(i = 0;i < count; i++){\
             if(i%3 == 1 && (idx-256) == img[i]){\
-                result[idx+256]++;\
+                result[idx]++;\
             }\
         }\
     }\
     if(512 <= idx && idx < 768){\
         for(i = 0;i < count; i++){\
-            if(i%3 == 2 && (idx-256) == img[i]){\
-                result[idx+512]++;\
+            if(i%3 == 2 && (idx-512) == img[i]){\
+                result[idx]++;\
             }\
         }\
     }\
@@ -54,9 +54,9 @@ int main(int argc, char const *argv[])
 
 	fscanf(inFile, "%u", &input_size);
 
-	cl_mem img = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(unsigned char) * input_size, NULL, &err);
+	cl_mem img = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(unsigned int) * input_size, NULL, &err);
 	cl_mem his_res = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(unsigned int) * 256 * 3, NULL, &err);
-	unsigned char *tmp = (unsigned char *) malloc(sizeof(unsigned char) * input_size);
+	unsigned int *tmp = (unsigned int *) malloc(sizeof(unsigned int) * input_size);
 	unsigned int *result = (unsigned int *) malloc(sizeof(unsigned int) * 256 * 3);
 
 	memset(result, 0x00, sizeof(unsigned int) * 256 * 3);
@@ -65,7 +65,7 @@ int main(int argc, char const *argv[])
     while( fscanf(inFile, "%u", &a) != EOF ) {
 		tmp[i++] = a;
 	}
-	err = clEnqueueWriteBuffer(queue, img, CL_TRUE, 0, sizeof(unsigned char) * input_size, tmp, 0, NULL, NULL);
+	err = clEnqueueWriteBuffer(queue, img, CL_TRUE, 0, sizeof(unsigned int) * input_size, tmp, 0, NULL, NULL);
 
 	size_t source_size = strlen(histogram);
 	unsigned int input_count = input_size/3;
@@ -73,7 +73,7 @@ int main(int argc, char const *argv[])
 	err = clBuildProgram(myprog, 1, &device, NULL, NULL, NULL);
 	cl_kernel mykernel = clCreateKernel(myprog, "histogram", &err);
 	clSetKernelArg(mykernel, 0, sizeof(cl_mem), &img);
-	clSetKernelArg(mykernel, 1, sizeof(unsigned int), &input_count);
+	clSetKernelArg(mykernel, 1, sizeof(unsigned int), &input_size);
 	clSetKernelArg(mykernel, 2, sizeof(cl_mem), &his_res);
 
 	size_t worksize = 768;
